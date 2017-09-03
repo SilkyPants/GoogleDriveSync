@@ -40,12 +40,14 @@
             this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
             this.quitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.clhSourceDirectory = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.clhDestination = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.clhTwoWay = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.lsvFolders = new System.Windows.Forms.ListView();
+            this.dgvFolders = new System.Windows.Forms.DataGridView();
+            this.isMonitored = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.TwoWaySync = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.SourceFolder = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.DestFolder = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.grpMonitoredFolders.SuspendLayout();
             this.cmsTrayMenu.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvFolders)).BeginInit();
             this.SuspendLayout();
             // 
             // btnToggleMonitoring
@@ -79,8 +81,8 @@
             // 
             this.grpMonitoredFolders.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpMonitoredFolders.Controls.Add(this.dgvFolders);
             this.grpMonitoredFolders.Controls.Add(this.btnAddFolder);
-            this.grpMonitoredFolders.Controls.Add(this.lsvFolders);
             this.grpMonitoredFolders.Location = new System.Drawing.Point(12, 52);
             this.grpMonitoredFolders.Name = "grpMonitoredFolders";
             this.grpMonitoredFolders.Size = new System.Drawing.Size(630, 297);
@@ -136,34 +138,62 @@
             this.quitToolStripMenuItem.Text = "Quit";
             this.quitToolStripMenuItem.Click += new System.EventHandler(this.QuitApplication);
             // 
-            // clhSourceDirectory
+            // dgvFolders
             // 
-            this.clhSourceDirectory.Text = "Source";
-            this.clhSourceDirectory.Width = 272;
+            this.dgvFolders.AllowUserToAddRows = false;
+            this.dgvFolders.AllowUserToDeleteRows = false;
+            this.dgvFolders.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.AllCellsExceptHeader;
+            this.dgvFolders.BackgroundColor = System.Drawing.SystemColors.Control;
+            this.dgvFolders.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.dgvFolders.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.RaisedHorizontal;
+            this.dgvFolders.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvFolders.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.isMonitored,
+            this.TwoWaySync,
+            this.SourceFolder,
+            this.DestFolder});
+            this.dgvFolders.Cursor = System.Windows.Forms.Cursors.Default;
+            this.dgvFolders.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.dgvFolders.Location = new System.Drawing.Point(3, 56);
+            this.dgvFolders.MultiSelect = false;
+            this.dgvFolders.Name = "dgvFolders";
+            this.dgvFolders.RowHeadersVisible = false;
+            this.dgvFolders.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.DisableResizing;
+            this.dgvFolders.RowTemplate.Height = 24;
+            this.dgvFolders.Size = new System.Drawing.Size(624, 238);
+            this.dgvFolders.TabIndex = 3;
             // 
-            // clhDestination
+            // isMonitored
             // 
-            this.clhDestination.Text = "Destination";
-            this.clhDestination.Width = 265;
+            this.isMonitored.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.ColumnHeader;
+            this.isMonitored.DataPropertyName = "IsMonitored";
+            this.isMonitored.HeaderText = "Monitor";
+            this.isMonitored.Name = "isMonitored";
+            this.isMonitored.ToolTipText = "Is folder pair monitored for changes";
+            this.isMonitored.Width = 61;
             // 
-            // clhTwoWay
+            // TwoWaySync
             // 
-            this.clhTwoWay.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.TwoWaySync.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.ColumnHeader;
+            this.TwoWaySync.DataPropertyName = "TwoWaySync";
+            this.TwoWaySync.HeaderText = "2 Way";
+            this.TwoWaySync.Name = "TwoWaySync";
+            this.TwoWaySync.ToolTipText = "Enable 2 way folder sync";
+            this.TwoWaySync.Width = 54;
             // 
-            // lsvFolders
+            // SourceFolder
             // 
-            this.lsvFolders.CheckBoxes = true;
-            this.lsvFolders.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.clhSourceDirectory,
-            this.clhDestination,
-            this.clhTwoWay});
-            this.lsvFolders.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.lsvFolders.Location = new System.Drawing.Point(3, 56);
-            this.lsvFolders.Name = "lsvFolders";
-            this.lsvFolders.Size = new System.Drawing.Size(624, 238);
-            this.lsvFolders.TabIndex = 1;
-            this.lsvFolders.UseCompatibleStateImageBehavior = false;
-            this.lsvFolders.View = System.Windows.Forms.View.Details;
+            this.SourceFolder.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.SourceFolder.DataPropertyName = "SourceFolder";
+            this.SourceFolder.HeaderText = "Source Directory";
+            this.SourceFolder.Name = "SourceFolder";
+            // 
+            // DestFolder
+            // 
+            this.DestFolder.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.DestFolder.DataPropertyName = "DestinationFolder";
+            this.DestFolder.HeaderText = "Destination Directory";
+            this.DestFolder.Name = "DestFolder";
             // 
             // frmMain
             // 
@@ -180,6 +210,7 @@
             this.Load += new System.EventHandler(this.SettingsFormLoaded);
             this.grpMonitoredFolders.ResumeLayout(false);
             this.cmsTrayMenu.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.dgvFolders)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -197,10 +228,11 @@
         private System.Windows.Forms.ToolStripMenuItem settingsToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem quitToolStripMenuItem;
-        private System.Windows.Forms.ListView lsvFolders;
-        private System.Windows.Forms.ColumnHeader clhSourceDirectory;
-        private System.Windows.Forms.ColumnHeader clhDestination;
-        private System.Windows.Forms.ColumnHeader clhTwoWay;
+        private System.Windows.Forms.DataGridView dgvFolders;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn isMonitored;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn TwoWaySync;
+        private System.Windows.Forms.DataGridViewTextBoxColumn SourceFolder;
+        private System.Windows.Forms.DataGridViewTextBoxColumn DestFolder;
     }
 }
 

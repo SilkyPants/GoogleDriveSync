@@ -74,23 +74,13 @@ namespace GoogleDriveSync
 
             newFolderPair.SetupWatcher(Watcher_OnChange, Watcher_Renamed);
 
-            m_Settings.MonitoredFolders.Add(newFolderPair);
+            m_Settings.DataSource.Add(newFolderPair);
 
             UpdateListView();
         }
 
         void UpdateListView()
         {
-            lsvFolders.Items.Clear();
-
-            foreach (var pair in m_Settings.MonitoredFolders)
-            {
-                var item = new ListViewItem(pair.SourceFolder);
-                item.SubItems.Add(pair.DestinationFolder);
-                item.Checked = pair.IsMonitored;
-
-                lsvFolders.Items.Add(item);
-            }
         }
 
         private void btnToggleMonitoring_Click(object sender, EventArgs e)
@@ -100,22 +90,26 @@ namespace GoogleDriveSync
 
         void StartMonitoring()
         {
-            foreach(var pair in m_Settings.MonitoredFolders)
+            foreach(var pair in m_Settings.DataSource)
             {
                 if (!pair.IsMonitored) return;
 
                 //Start monitoring.
-                pair.Watcher.EnableRaisingEvents = true;
+                pair.SetMonitoring(true);
             }
+
+            btnToggleMonitoring.Text = "Stop Monitoring";
         }
 
         void StopMonitoring()
         {
-            foreach (var pair in m_Settings.MonitoredFolders)
+            foreach (var pair in m_Settings.DataSource)
             {
                 //Start monitoring.
-                pair.Watcher.EnableRaisingEvents = false;
+                pair.SetMonitoring(false);
             }
+
+            btnToggleMonitoring.Text = "Start Monitoring";
         }
 
         private void Watcher_Renamed(object sender, RenamedEventArgs e)
@@ -124,11 +118,23 @@ namespace GoogleDriveSync
             {
                 var watcher = sender as FileSystemWatcher;
 
-                foreach (var pair in m_Settings.MonitoredFolders)
+                foreach (var pair in m_Settings.DataSource)
                 {
+                    if (!pair.Contains(watcher)) continue;
+
                     var oldPath = e.OldFullPath.Replace(pair.SourceFolder, pair.DestinationFolder);
                     var newPath = e.FullPath.Replace(pair.SourceFolder, pair.DestinationFolder);
+                    var otherWatcher = pair.DestinationWatcher;
 
+                    if (pair.TwoWaySync && !pair.SourceWasChanged(watcher))
+                    {
+                        var temp = oldPath;
+                        oldPath = newPath;
+                        newPath = temp;
+                        otherWatcher = pair.SourceWatcher;
+                    }
+
+                    otherWatcher.EnableRaisingEvents = false;
                     if (File.GetAttributes(oldPath).HasFlag(FileAttributes.Directory))
                     {
                         Directory.Move(oldPath, newPath);
@@ -137,6 +143,7 @@ namespace GoogleDriveSync
                     {
                         File.Move(oldPath, newPath);
                     }
+                    otherWatcher.EnableRaisingEvents = IsMonitoringFolders;
                 }
             }
         }
@@ -147,14 +154,25 @@ namespace GoogleDriveSync
             {
                 var watcher = sender as FileSystemWatcher;
 
-                foreach (var pair in m_Settings.MonitoredFolders)
+                foreach (var pair in m_Settings.DataSource)
                 {
-                    if (watcher != pair.Watcher) continue;
+                    if (!pair.Contains(watcher)) continue;
 
                     // Specify what is done when a file is changed.
-                    WriteLine("{0}, with path {1} has been {2}{3}", e.Name, e.FullPath, e.ChangeType, Environment.NewLine);
+                    WriteLine("{0}, with path {1} has been {2}", e.Name, e.FullPath, e.ChangeType);
 
-                    Copy(pair.SourceFolder, pair.DestinationFolder);
+                    if (pair.TwoWaySync && !pair.SourceWasChanged(watcher))
+                    {
+                        pair.SourceWatcher.EnableRaisingEvents = false;
+                        Copy(pair.DestinationFolder, pair.SourceFolder);
+                        pair.SourceWatcher.EnableRaisingEvents = IsMonitoringFolders;
+                    }
+                    else
+                    {
+                        pair.DestinationWatcher.EnableRaisingEvents = false;
+                        Copy(pair.SourceFolder, pair.DestinationFolder);
+                        pair.DestinationWatcher.EnableRaisingEvents = IsMonitoringFolders;
+                    }
                 }
             }
         }
@@ -192,8 +210,7 @@ namespace GoogleDriveSync
             // Copy each subdirectory using recursion.
             foreach (DirectoryInfo diSourceSubDir in source.GetDirectories())
             {
-                DirectoryInfo nextTargetSubDir =
-                    target.CreateSubdirectory(diSourceSubDir.Name);
+                DirectoryInfo nextTargetSubDir = target.CreateSubdirectory(diSourceSubDir.Name);
                 CopyAll(diSourceSubDir, nextTargetSubDir);
             }
         }
@@ -222,6 +239,8 @@ namespace GoogleDriveSync
 
                 UpdateListView();
             }
+            dgvFolders.AutoGenerateColumns = false;
+            dgvFolders.DataSource = m_Settings.DataSource;
         }
 
         void SaveSettings()
@@ -254,11 +273,11 @@ namespace GoogleDriveSync
     class Settings
     {
         public bool StartMonitorOnLoad { get; set; } = false;
-        public List<MonitoredFolder> MonitoredFolders { get; private set; } = new List<MonitoredFolder>();
+        public BindingList<MonitoredFolder> DataSource { get; set; } = new BindingList<MonitoredFolder>();
 
         public void SetupWatchers(FileSystemEventHandler onChanged, RenamedEventHandler onRenamed)
         {
-            foreach (var pair in MonitoredFolders)
+            foreach (var pair in DataSource)
             {
                 pair.SetupWatcher(onChanged, onRenamed);
             }
@@ -269,25 +288,59 @@ namespace GoogleDriveSync
     [JsonObject(MemberSerialization.OptIn)]
     class MonitoredFolder
     {
-        [JsonProperty] public string SourceFolder { get; set; }
-        [JsonProperty] public string DestinationFolder { get; set; }
         [JsonProperty]
+        [DisplayName(" ")]
         public bool IsMonitored { get; set; } = true;
+
         [JsonProperty]
+        [DisplayName("Source Folder")]
+        public string SourceFolder { get; set; }
+
+        [JsonProperty]
+        [DisplayName("Destination Folder")]
+        public string DestinationFolder { get; set; }
+
+        [JsonProperty]
+        [DisplayName(" ")]
         public bool TwoWaySync { get; set; } = false;
 
-        public FileSystemWatcher Watcher { get; private set; }
-        
+        [Browsable(false)]
+        public FileSystemWatcher SourceWatcher { get; set; }
+        [Browsable(false)]
+        public FileSystemWatcher DestinationWatcher { get; set; }
+
+        public bool Contains(FileSystemWatcher watcher)
+        {
+            return watcher == SourceWatcher || watcher == DestinationWatcher;
+        }
+
+        public bool SourceWasChanged(FileSystemWatcher watcher)
+        {
+            return SourceWatcher == watcher;
+        }
+
+        public void SetMonitoring(bool state)
+        {
+            SourceWatcher.EnableRaisingEvents = state;
+            DestinationWatcher.EnableRaisingEvents = state;
+        }
+
         public void SetupWatcher(FileSystemEventHandler onChanged, RenamedEventHandler onRenamed)
         {
-            Watcher = new FileSystemWatcher(this.SourceFolder, "*.*");
+            SourceWatcher = CreateWatcher(SourceFolder, onChanged, onRenamed);
+            DestinationWatcher = CreateWatcher(DestinationFolder, onChanged, onRenamed);
+        }
+
+        FileSystemWatcher CreateWatcher(string folder, FileSystemEventHandler onChanged, RenamedEventHandler onRenamed)
+        {
+            var watcher = new FileSystemWatcher(folder, "*.*");
 
             // Watch both files and subdirectories.
-            Watcher.IncludeSubdirectories = true;
+            watcher.IncludeSubdirectories = true;
 
             // Watch for all changes specified in the NotifyFilters
             //enumeration.
-            Watcher.NotifyFilter =
+            watcher.NotifyFilter =
             NotifyFilters.CreationTime |
             NotifyFilters.DirectoryName |
             NotifyFilters.FileName |
@@ -295,13 +348,15 @@ namespace GoogleDriveSync
             NotifyFilters.Size;
 
             // Watch all files.
-            Watcher.Filter = "*.*";
+            watcher.Filter = "*.*";
 
             // Add event handlers.
-            Watcher.Created += onChanged;
-            Watcher.Changed += onChanged;
-            Watcher.Deleted += onChanged;
-            Watcher.Renamed += onRenamed;
+            watcher.Created += onChanged;
+            watcher.Changed += onChanged;
+            watcher.Deleted += onChanged;
+            watcher.Renamed += onRenamed;
+
+            return watcher;
         }
     }
 }
