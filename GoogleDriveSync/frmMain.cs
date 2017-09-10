@@ -122,20 +122,18 @@ namespace GoogleDriveSync
                 {
                     if (!pair.Contains(watcher)) continue;
 
-                    var oldPath = e.OldFullPath.Replace(pair.SourceFolder, pair.DestinationFolder);
-                    var newPath = e.FullPath.Replace(pair.SourceFolder, pair.DestinationFolder);
-                    var otherWatcher = pair.DestinationWatcher;
+                    var sourceWasChanged = pair.SourceWasChanged(watcher);
 
-                    if (pair.TwoWaySync && !pair.SourceWasChanged(watcher))
-                    {
-                        var temp = oldPath;
-                        oldPath = newPath;
-                        newPath = temp;
-                        otherWatcher = pair.SourceWatcher;
-                    }
+                    var sourceFolder = sourceWasChanged ? pair.SourceFolder : pair.DestinationFolder;
+                    var destFolder = !sourceWasChanged ? pair.SourceFolder : pair.DestinationFolder;
 
-                    otherWatcher.EnableRaisingEvents = false;
-                    if (File.GetAttributes(oldPath).HasFlag(FileAttributes.Directory))
+                    var oldPath = e.OldFullPath.Replace(sourceFolder, destFolder);
+                    var newPath = e.FullPath.Replace(sourceFolder, destFolder);
+                    
+                    pair.SourceWatcher.EnableRaisingEvents = false;
+                    pair.DestinationWatcher.EnableRaisingEvents = false;
+
+                    if (File.GetAttributes(e.FullPath).HasFlag(FileAttributes.Directory))
                     {
                         Directory.Move(oldPath, newPath);
                     }
@@ -143,13 +141,16 @@ namespace GoogleDriveSync
                     {
                         File.Move(oldPath, newPath);
                     }
-                    otherWatcher.EnableRaisingEvents = IsMonitoringFolders;
+
+                    pair.SourceWatcher.EnableRaisingEvents = IsMonitoringFolders;
+                    pair.DestinationWatcher.EnableRaisingEvents = IsMonitoringFolders && pair.TwoWaySync;
                 }
             }
         }
 
         private void Watcher_OnChange(object sender, FileSystemEventArgs e)
         {
+            WriteLine("{0} Changed. {1} | {2}", e.FullPath, e.ChangeType, e.Name);
             if (sender is FileSystemWatcher)
             {
                 var watcher = sender as FileSystemWatcher;
@@ -161,18 +162,20 @@ namespace GoogleDriveSync
                     // Specify what is done when a file is changed.
                     WriteLine("{0}, with path {1} has been {2}", e.Name, e.FullPath, e.ChangeType);
 
+                    pair.SourceWatcher.EnableRaisingEvents = false;
+                    pair.DestinationWatcher.EnableRaisingEvents = false;
+
                     if (pair.TwoWaySync && !pair.SourceWasChanged(watcher))
                     {
-                        pair.SourceWatcher.EnableRaisingEvents = false;
                         Copy(pair.DestinationFolder, pair.SourceFolder);
-                        pair.SourceWatcher.EnableRaisingEvents = IsMonitoringFolders;
                     }
                     else
                     {
-                        pair.DestinationWatcher.EnableRaisingEvents = false;
                         Copy(pair.SourceFolder, pair.DestinationFolder);
-                        pair.DestinationWatcher.EnableRaisingEvents = IsMonitoringFolders;
                     }
+
+                    pair.SourceWatcher.EnableRaisingEvents = IsMonitoringFolders;
+                    pair.DestinationWatcher.EnableRaisingEvents = IsMonitoringFolders && pair.TwoWaySync;
                 }
             }
         }
@@ -239,6 +242,7 @@ namespace GoogleDriveSync
 
                 UpdateListView();
             }
+
             dgvFolders.AutoGenerateColumns = false;
             dgvFolders.DataSource = m_Settings.DataSource;
         }
